@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ar" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - نظام الإعجابات</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen py-8">
+    <!-- Login Form -->
+    <div id="loginForm" class="max-w-md mx-auto p-8 glass-panel rounded-2xl shadow-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-white mb-2">لوحة تحكم نظام الإعجابات</h1>
+            <p class="text-gray-200">سجل الدخول للوصول إلى لوحة التحكم</p>
+        </div>
+        
+        <form id="loginFormElement" class="space-y-6">
+            <div>
+                <label class="block text-white mb-2">اسم المستخدم</label>
+                <input type="text" id="username" class="w-full p-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white" placeholder="أدخل اسم المستخدم" required>
+            </div>
+            
+            <div>
+                <label class="block text-white mb-2">كلمة المرور</label>
+                <input type="password" id="password" class="w-full p-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white" placeholder="أدخل كلمة المرور" required>
+            </div>
+            
+            <button type="submit" class="w-full bg-white text-purple-700 py-3 rounded-lg font-bold hover:bg-gray-100 transition duration-300">
+                تسجيل الدخول
+            </button>
+        </form>
+    </div>
+
+    <!-- Admin Dashboard (Hidden until login) -->
+    <div id="dashboard" class="hidden max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8 p-6 glass-panel rounded-2xl">
+            <div>
+                <h1 class="text-3xl font-bold text-white">لوحة التحكم</h1>
+                <p class="text-gray-200" id="welcomeMessage">مرحباً، ...</p>
+            </div>
+            <button onclick="logout()" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition duration-300">
+                تسجيل الخروج
+            </button>
+        </div>
+
+        <!-- Statistics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="glass-panel p-6 rounded-2xl">
+                <div class="text-gray-200 mb-2">إجمالي الأكواد</div>
+                <div class="text-3xl font-bold text-white" id="totalCoupons">0</div>
+            </div>
+            
+            <div class="glass-panel p-6 rounded-2xl">
+                <div class="text-gray-200 mb-2">إجمالي الإعجابات</div>
+                <div class="text-3xl font-bold text-white" id="totalLikes">0</div>
+            </div>
+            
+            <div class="glass-panel p-6 rounded-2xl">
+                <div class="text-gray-200 mb-2">الإعجابات المستخدمة</div>
+                <div class="text-3xl font-bold text-white" id="usedLikes">0</div>
+            </div>
+            
+            <div class="glass-panel p-6 rounded-2xl">
+                <div class="text-gray-200 mb-2">الأكواد النشطة</div>
+                <div class="text-3xl font-bold text-white" id="activeCoupons">0</div>
+            </div>
+        </div>
+
+        <!-- Coupons Table -->
+        <div class="glass-panel p-6 rounded-2xl mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">قائمة الأكواد</h2>
+                <div class="flex gap-4">
+                    <input type="text" id="searchCoupon" placeholder="ابحث عن كود..." class="p-2 rounded-lg bg-white/20 text-white placeholder-gray-300">
+                    <button onclick="loadCoupons()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+                        تحديث
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-white">
+                    <thead>
+                        <tr class="border-b border-white/20">
+                            <th class="py-3 text-right">الكود</th>
+                            <th class="py-3 text-right">الإعجابات</th>
+                            <th class="py-3 text-right">المستخدم</th>
+                            <th class="py-3 text-right">المتبقي</th>
+                            <th class="py-3 text-right">تاريخ الإنشاء</th>
+                            <th class="py-3 text-right">تاريخ الانتهاء</th>
+                            <th class="py-3 text-right">الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="couponsTable">
+                        <!-- Coupons will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-4 flex justify-between items-center text-white">
+                <div id="paginationInfo">عرض 0-0 من 0</div>
+                <div class="flex gap-2">
+                    <button onclick="changePage(-1)" class="px-3 py-1 bg-white/20 rounded hover:bg-white/30">السابق</button>
+                    <span id="currentPage" class="px-3 py-1">1</span>
+                    <button onclick="changePage(1)" class="px-3 py-1 bg-white/20 rounded hover:bg-white/30">التالي</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="glass-panel p-6 rounded-2xl">
+            <h2 class="text-2xl font-bold text-white mb-6">إجراءات سريعة</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <a href="/generate" target="_blank" class="p-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl text-center text-white hover:opacity-90 transition duration-300">
+                    <div class="text-2xl mb-2">🎟️</div>
+                    <div class="font-bold">توليد أكواد جديدة</div>
+                </a>
+                
+                <button onclick="exportData()" class="p-6 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-2xl text-center text-white hover:opacity-90 transition duration-300">
+                    <div class="text-2xl mb-2">📊</div>
+                    <div class="font-bold">تصدير البيانات</div>
+                </button>
+                
+                <button onclick="refreshStats()" class="p-6 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl text-center text-white hover:opacity-90 transition duration-300">
+                    <div class="text-2xl mb-2">🔄</div>
+                    <div class="font-bold">تحديث الإحصائيات</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentToken = null;
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // Login function
+        document.getElementById('loginFormElement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentToken = data.token;
+                    localStorage.setItem('adminToken', data.token);
+                    
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    document.getElementById('welcomeMessage').textContent = `مرحباً، ${data.user.username}`;
+                    
+                    loadStatistics();
+                    loadCoupons();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ في تسجيل الدخول',
+                        text: data.error || 'بيانات الدخول غير صحيحة',
+                        background: '#1e293b',
+                        color: 'white'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'حدث خطأ في الاتصال بالسيرفر',
+                    background: '#1e293b',
+                    color: 'white'
+                });
+            }
+        });
+
+        // Check if user is already logged in
+        window.onload = () => {
+            const savedToken = localStorage.getItem('adminToken');
+            if (savedToken) {
+                // Verify token
+                currentToken = savedToken;
+                document.getElementById('loginForm').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadStatistics();
+                loadCoupons();
+            }
+        };
+
+        // Load statistics
+        async function loadStatistics() {
+            if (!currentToken) return;
+            
+            try {
+                const response = await fetch('/api/statistics', {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalCoupons').textContent = data.statistics.total_coupons || 0;
+                    document.getElementById('totalLikes').textContent = data.statistics.total_likes || 0;
+                    document.getElementById('usedLikes').textContent = data.statistics.used_likes || 0;
+                    document.getElementById('activeCoupons').textContent = data.statistics.active_coupons || 0;
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+
+        // Load coupons
+        async function loadCoupons(page = 1) {
+            if (!currentToken) return;
+            
+            const search = document.getElementById('searchCoupon').value;
+            
+            try {
+                const response = await fetch(`/api/coupons?page=${page}&limit=10&search=${encodeURIComponent(search)}`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const table = document.getElementById('couponsTable');
+                    table.innerHTML = '';
+                    
+                    data.coupons.forEach(coupon => {
+                        const row = document.createElement('tr');
+                        row.className = 'border-b border-white/10 hover:bg-white/5';
+                        row.innerHTML = `
+                            <td class="py-3 px-2 font-mono text-right">${coupon.code}</td>
+                            <td class="py-3 px-2 text-center">${coupon.likes_count}</td>
+                            <td class="py-3 px-2 text-center">${coupon.used_likes}</td>
+                            <td class="py-3 px-2 text-center">${coupon.remaining_likes}</td>
+                            <td class="py-3 px-2 text-right">${new Date(coupon.created_at).toLocaleDateString('ar-EG')}</td>
+                            <td class="py-3 px-2 text-right">${new Date(coupon.expires_at).toLocaleDateString('ar-EG')}</td>
+                            <td class="py-3 px-2 text-center">
+                                <span class="px-2 py-1 rounded-full ${coupon.is_valid ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">
+                                    ${coupon.is_valid ? 'نشط' : 'منتهي'}
+                                </span>
+                            </td>
+                        `;
+                        table.appendChild(row);
+                    });
+                    
+                    currentPage = data.pagination.page;
+                    totalPages = data.pagination.totalPages;
+                    
+                    document.getElementById('currentPage').textContent = currentPage;
+                    document.getElementById('paginationInfo').textContent = 
+                        `عرض ${Math.min(data.pagination.total, (currentPage - 1) * 10 + 1)}-${Math.min(data.pagination.total, currentPage * 10)} من ${data.pagination.total}`;
+                }
+            } catch (error) {
+                console.error('Error loading coupons:', error);
+            }
+        }
+
+        // Change page
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage > 0 && newPage <= totalPages) {
+                loadCoupons(newPage);
+            }
+        }
+
+        // Logout
+        function logout() {
+            currentToken = null;
+            localStorage.removeItem('adminToken');
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+        }
+
+        // Refresh statistics
+        function refreshStats() {
+            loadStatistics();
+            loadCoupons();
+            Swal.fire({
+                icon: 'success',
+                title: 'تم التحديث',
+                text: 'تم تحديث البيانات بنجاح',
+                timer: 1500,
+                showConfirmButton: false,
+                background: '#1e293b',
+                color: 'white'
+            });
+        }
+
+        // Export data
+        function exportData() {
+            Swal.fire({
+                title: 'تصدير البيانات',
+                text: 'سيتم تصدير جميع الأكواد بصيغة CSV',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'تصدير',
+                cancelButtonText: 'إلغاء',
+                background: '#1e293b',
+                color: 'white'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Implement export functionality
+                    window.open('/api/export-coupons?token=' + currentToken, '_blank');
+                }
+            });
+        }
+
+        // Search on Enter
+        document.getElementById('searchCoupon').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadCoupons(1);
+            }
+        });
+    </script>
+</body>
+                                                                   </html>
