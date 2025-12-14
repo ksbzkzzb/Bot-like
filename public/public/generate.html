@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>توليد أكواد التفعيل</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="glass-panel rounded-2xl p-8 w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-white mb-2">توليد أكواد التفعيل</h1>
+            <p class="text-gray-200">قم بإنشاء أكواد جديدة للعملاء</p>
+        </div>
+        
+        <form id="generateForm" class="space-y-6">
+            <div>
+                <label class="block text-white mb-2">عدد الإعجابات</label>
+                <input type="number" id="likes_count" min="100" max="100000" value="1000" class="w-full p-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white" required>
+            </div>
+            
+            <div>
+                <label class="block text-white mb-2">مدة الصلاحية (أيام)</label>
+                <input type="number" id="duration_days" min="1" max="365" value="30" class="w-full p-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white" required>
+            </div>
+            
+            <div>
+                <label class="block text-white mb-2">عدد الأكواد</label>
+                <input type="number" id="quantity" min="1" max="100" value="1" class="w-full p-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-white" required>
+            </div>
+            
+            <button type="submit" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-lg font-bold hover:opacity-90 transition duration-300">
+                توليد الأكواد
+            </button>
+        </form>
+        
+        <div id="generatedCodes" class="mt-8 hidden">
+            <h2 class="text-xl font-bold text-white mb-4">الأكواد المولدة:</h2>
+            <div id="codesList" class="space-y-2 max-h-60 overflow-y-auto p-4 bg-white/10 rounded-lg"></div>
+            <button onclick="copyAllCodes()" class="w-full mt-4 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition duration-300">
+                نسخ جميع الأكواد
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        window.onload = () => {
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'غير مصرح',
+                    text: 'يجب تسجيل الدخول أولاً',
+                    background: '#1e293b',
+                    color: 'white'
+                }).then(() => {
+                    window.location.href = '/admin';
+                });
+            }
+        };
+
+        // Generate codes
+        document.getElementById('generateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                alert('يجب تسجيل الدخول أولاً');
+                window.location.href = '/admin';
+                return;
+            }
+            
+            const likes_count = document.getElementById('likes_count').value;
+            const duration_days = document.getElementById('duration_days').value;
+            const quantity = document.getElementById('quantity').value;
+            
+            try {
+                const response = await fetch('/api/generate-coupon', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ likes_count, duration_days, quantity })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show generated codes
+                    const codesList = document.getElementById('codesList');
+                    codesList.innerHTML = '';
+                    
+                    data.coupons.forEach(coupon => {
+                        const codeDiv = document.createElement('div');
+                        codeDiv.className = 'flex justify-between items-center p-2 bg-white/5 rounded';
+                        codeDiv.innerHTML = `
+                            <span class="font-mono text-white">${coupon.code}</span>
+                            <button onclick="copyCode('${coupon.code}')" class="text-sm bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">
+                                نسخ
+                            </button>
+                        `;
+                        codesList.appendChild(codeDiv);
+                    });
+                    
+                    document.getElementById('generatedCodes').classList.remove('hidden');
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم بنجاح!',
+                        text: `تم توليد ${quantity} كود بنجاح`,
+                        background: '#1e293b',
+                        color: 'white'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ',
+                        text: data.error || 'فشل في توليد الأكواد',
+                        background: '#1e293b',
+                        color: 'white'
+                    });
+                }
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ في الاتصال',
+                    text: 'حدث خطأ في الاتصال بالسيرفر',
+                    background: '#1e293b',
+                    color: 'white'
+                });
+            }
+        });
+
+        // Copy single code
+        function copyCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم النسخ',
+                    text: `تم نسخ الكود: ${code}`,
+                    timer: 1500,
+                    showConfirmButton: false,
+                    background: '#1e293b',
+                    color: 'white'
+                });
+            });
+        }
+
+        // Copy all codes
+        function copyAllCodes() {
+            const codes = Array.from(document.querySelectorAll('#codesList span'))
+                .map(span => span.textContent)
+                .join('\n');
+            
+            navigator.clipboard.writeText(codes).then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم النسخ',
+                    text: 'تم نسخ جميع الأكواد',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    background: '#1e293b',
+                    color: 'white'
+                });
+            });
+        }
+    </script>
+</body>
+</html>
